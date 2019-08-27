@@ -20,16 +20,16 @@ import (
 var gorillastore = gorillaSessions.NewCookieStore([]byte("SESSION_KEY"))
 
 var UUIR_LOGS string
-var ACTOR = "robot_test"
+var ACTOR string
 
 func main() {
 
-	UUIR_LOGS, err := exec.Command("uuidgen").Output()
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("ACTOR : %s\n", ACTOR)
-	fmt.Printf("UUIR_LOGS : %s\n", UUIR_LOGS)
+	// UUIR_LOGS, err := exec.Command("uuidgen").Output()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fmt.Printf("ACTOR : %s\n", ACTOR)
+	// fmt.Printf("UUIR_LOGS : %s\n", UUIR_LOGS)
 
 	app := setupRouter()
 	app.Use(cors.New(cors.Config{
@@ -174,29 +174,39 @@ func (h *CustomerHandler) FirstPage(c *gin.Context) {
 }
 
 func (h *CustomerHandler) Login(c *gin.Context) {
-	go Logger("INFO", ACTOR, "sample_server", "POST", "Login", "Request Function", "", h.Channel)
-	go Logger("DEBUG", ACTOR, "sample_server", "POST", "Login", "path="+c.Request.RequestURI, "", h.Channel)
+	go Logger("INFO", "", "sample_server", "POST", "Login", "Request Function", "", h.Channel)
+	go Logger("DEBUG", "", "sample_server", "POST", "Login", "path="+c.Request.RequestURI, "", h.Channel)
+
+	UUIR_LOGS, err := exec.Command("uuidgen").Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("ACTOR : %s\n", ACTOR)
+	fmt.Printf("UUIR_LOGS : %s\n", UUIR_LOGS)
+
 	user := Login{}
 	// fmt.Println(user.Username)
 	if err := c.ShouldBindJSON(&user); err != nil {
 		// err.Error() conv to string
 		_, file, line, _ := runtime.Caller(1)
 		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "Login", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
+		go Logger("ERROR", "", "sample_server", "POST", "Login", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": message,
 		})
 		return
 	}
 
+	go Logger("INFO", user.Username, "sample_server", "POST", "Login", "Request Function", "", h.Channel)
+
 	now := time.Now()
 	sec := now.Unix()
 	body := user.Username
-	sid, err := h.createSession(body + string(sec))
-	if err != "" {
+	sid, errmessage := h.createSession(body + string(sec))
+	if errmessage != "" {
 		// err.Error() conv to string
 		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + errmessage
 		go Logger("ERROR", ACTOR, "sample_server", "POST", "Login", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": message,
