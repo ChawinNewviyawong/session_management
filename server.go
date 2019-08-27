@@ -422,7 +422,10 @@ func (h *CustomerHandler) AddCar(c *gin.Context) {
 		_, file, line, _ := runtime.Caller(1)
 		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest000 " + err.Error()
 		go Logger("ERROR", "", "sample_server", "POST", "AddCar", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{fer
+			// newBody := &MyReadCloser{c.Request.Body, &buf}
+			// c.Request.Body = newBody
+			// fmt.Println(c.Request.Body)
 			"error": message,
 		})
 		return
