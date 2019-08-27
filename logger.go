@@ -39,7 +39,7 @@ func Logger(level string, actor string, component string, requestMethod string, 
 		FunctionName:  functionName,
 		Message:       message,
 		CodeStatus:    codeStatus,
-		UUID:          UUIR_LOGS,
+		UUID:          UUID_LOGS,
 	}
 
 	level = strings.ToUpper(level)
@@ -52,26 +52,28 @@ func Logger(level string, actor string, component string, requestMethod string, 
 
 	case "INFO":
 		loggerAsJson.Level = "INFO"
-		fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s %s`+"\n",
-			loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus)
+
 	case "DEBUG":
 		loggerAsJson.Level = "DEBUG"
-		fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
-			loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus)
+		// fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s "uuid":%s`+"\n",
+		// 	loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
 	case "ERROR":
 		loggerAsJson.Level = "ERROR"
-		fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
-			loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus)
+		// fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s "uuid":%s`+"\n",
+		// 	loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
 	case "WANNING":
 		loggerAsJson.Level = "WANNING"
-		fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
-			loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus)
+		// fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s "uuid":%s`+"\n",
+		// 	loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
 	case "FATAL":
 		loggerAsJson.Level = "FATAL"
-		fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s`+"\n",
-			loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus)
+		// fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s "uuid":%s`+"\n",
+		// 	loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
 
 	}
+
+	fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s %s "uuid":"%s"`+"\n",
+		loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
 	LoggerDriving(loggerAsJson)
 
 	channel <- level + " OK"

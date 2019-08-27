@@ -19,25 +19,33 @@ import (
 
 var gorillastore = gorillaSessions.NewCookieStore([]byte("SESSION_KEY"))
 
-var UUIR_LOGS string
+var UUID_LOGS string
 var ACTOR string
+var best = Profile{
+	Username:    "best",
+	Address:     "1234",
+	Email:       "best@email.com",
+	CompanyName: "ice_company",
+	TxId:        "001",
+}
+var gear = Profile{
+	Username:    "gear",
+	Address:     "1234",
+	Email:       "gear@email.com",
+	CompanyName: "ice_company",
+	TxId:        "001",
+}
 
 func main() {
 
-	// UUIR_LOGS, err := exec.Command("uuidgen").Output()
+	// UUID_LOGS, err := exec.Command("uuidgen").Output()
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
 	// fmt.Printf("ACTOR : %s\n", ACTOR)
-	// fmt.Printf("UUIR_LOGS : %s\n", UUIR_LOGS)
+	// fmt.Printf("UUID_LOGS : %s\n", UUID_LOGS)
 
 	app := setupRouter()
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"PUT", "POST", "GET"},
-		AllowHeaders:     []string{"Content-Type"},
-		AllowCredentials: true,
-	}))
 
 	// router.GET("/show", func(c *gin.Context) {
 	// 	gorillasession, err := gorillastore.Get(c.Request, "sessionid")
@@ -131,6 +139,12 @@ func setupRouter() *gin.Engine {
 	app := gin.Default()
 	//เหมือน gin.Default() ; Full
 	// app := gin.New()
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"PUT", "POST", "GET"},
+		AllowHeaders:     []string{"Content-Type"},
+		AllowCredentials: true,
+	}))
 
 	//middleware
 
@@ -177,13 +191,6 @@ func (h *CustomerHandler) Login(c *gin.Context) {
 	go Logger("INFO", "", "sample_server", "POST", "Login", "Request Function", "", h.Channel)
 	go Logger("DEBUG", "", "sample_server", "POST", "Login", "path="+c.Request.RequestURI, "", h.Channel)
 
-	UUIR_LOGS, err := exec.Command("uuidgen").Output()
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("ACTOR : %s\n", ACTOR)
-	fmt.Printf("UUIR_LOGS : %s\n", UUIR_LOGS)
-
 	user := Login{}
 	// fmt.Println(user.Username)
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -196,13 +203,26 @@ func (h *CustomerHandler) Login(c *gin.Context) {
 		})
 		return
 	}
+	UUID_LOGSAsBytes, err := exec.Command("uuidgen").Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	UUID_LOGS = string(UUID_LOGSAsBytes)
+	// fmt.Printf("ACTOR : %s\n", ACTOR)
+	ACTOR = user.Username
+	go Logger("INFO", ACTOR, "sample_server", "POST", "Login", "ACTOR : "+ACTOR+"UUID_LOGS : "+UUID_LOGS, "", h.Channel)
+	// fmt.Printf("UUID_LOGS : %s\n", UUID_LOGS)
 
-	go Logger("INFO", user.Username, "sample_server", "POST", "Login", "Request Function", "", h.Channel)
-
+	var profile Profile
+	if user.Username == "best" {
+		profile = best
+	} else if user.Username == "gear" {
+		profile = gear
+	}
 	now := time.Now()
 	sec := now.Unix()
-	body := user.Username
-	sid, errmessage := h.createSession(body + string(sec))
+	body := profile.Username
+	sid, errmessage := h.createSession(body+string(sec), profile)
 	if errmessage != "" {
 		// err.Error() conv to string
 		_, file, line, _ := runtime.Caller(1)
@@ -214,17 +234,18 @@ func (h *CustomerHandler) Login(c *gin.Context) {
 		return
 	}
 	// hardcode
-	proflie := Profile{
-		Username:    "gear",
-		Address:     "empiretower",
-		Email:       "gear@email.com",
-		CompanyName: "ice",
-	}
+	// proflie := Profile{
+	// 	Username:    "gear",
+	// 	Address:     "empiretower",
+	// 	Email:       "gear@email.com",
+	// 	CompanyName: "ice_company",
+	// 	TxId:        "001",
+	// }
 
 	go Logger("INFO", ACTOR, "sample_server", "POST", "Login", "Request Success:", strconv.Itoa(http.StatusOK), h.Channel)
 
 	c.JSON(http.StatusOK, gin.H{
-		"profile":   proflie,
+		"profile":   profile,
 		"sessionid": sid,
 	})
 	return
@@ -348,6 +369,7 @@ type Profile struct {
 	Email       string `json: "email"`
 	CompanyName string `json: "companyName"`
 	SId         string `json: "sid"`
+	TxId        string `json: "txid"`
 }
 
 type Sid struct {
