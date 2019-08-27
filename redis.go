@@ -8,60 +8,66 @@ import (
 	"github.com/go-redis/redis"
 )
 
-func createConnection() *redis.Client {
+func (opt *operation) createConnection() *redis.Client {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
 
 	ping, err := client.Ping().Result()
 	fmt.Println(ping, err)
+	if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : Error connection to Redis " + err.Error()
+		go Logger("FATAL", ACTOR, "sample_server", "", "createConnection", message, "", opt.Channel)
+
+	}
 	return client
 }
 
-func (h *CustomerHandler) setValue(key string, value string) (bool, string) {
-	go Logger("INFO", ACTOR, "sample_server", "", "setValue", "Request Function", "", h.Channel)
-	go Logger("DEBUG", ACTOR, "sample_server", "", "setValue", "key="+key+" value="+value, "", h.Channel)
-	client := createConnection()
+func (opt *operation) setValue(key string, value string) (bool, string) {
+	go Logger("INFO", ACTOR, "sample_server", "", "setValue", "Request Function", "", opt.Channel)
+	go Logger("DEBUG", ACTOR, "sample_server", "", "setValue", "key="+key+" value="+value, "", opt.Channel)
+	client := opt.createConnection()
 	err := client.Set(key, value, 0).Err()
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
 		message := "[" + file + "][" + strconv.Itoa(line) + "] : Error on Set Value to Redis " + err.Error()
-		go Logger("FATAL", ACTOR, "sample_server", "", "setValue", message, "", h.Channel)
+		go Logger("FATAL", ACTOR, "sample_server", "", "setValue", message, "", opt.Channel)
 
 		return false, message
 	}
-	go Logger("INFO", ACTOR, "sample_server", "", "setValue", "Success", "", h.Channel)
+	go Logger("INFO", ACTOR, "sample_server", "", "setValue", "Success", "", opt.Channel)
 	return true, ""
 }
 
-func (h *CustomerHandler) getValue(key string) ([]byte, error) {
-	go Logger("INFO", ACTOR, "sample_server", "", "getValue", "Request Function", "", h.Channel)
-	go Logger("DEBUG", ACTOR, "sample_server", "", "getValue", "key="+key, "", h.Channel)
-	client := createConnection()
+func (opt *operation) getValue(key string) ([]byte, error) {
+	go Logger("INFO", ACTOR, "sample_server", "", "getValue", "Request Function", "", opt.Channel)
+	go Logger("DEBUG", ACTOR, "sample_server", "", "getValue", "key="+key, "", opt.Channel)
+	client := opt.createConnection()
 	value, err := client.Get(key).Result()
 	valueAsByte := []byte(value)
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
 		message := "[" + file + "][" + strconv.Itoa(line) + "] : Error on Get Value to Redis " + err.Error()
-		go Logger("FATAL", ACTOR, "sample_server", "", "getValue", message, "", h.Channel)
+		go Logger("FATAL", ACTOR, "sample_server", "", "getValue", message, "", opt.Channel)
 		return nil, err
 	}
-	go Logger("INFO", ACTOR, "sample_server", "", "getValue", "Success", "", h.Channel)
+	go Logger("INFO", ACTOR, "sample_server", "", "getValue", "Success", "", opt.Channel)
 	return valueAsByte, err
 }
 
-func (h *CustomerHandler) delValue(key string) (bool, error) {
-	go Logger("INFO", ACTOR, "sample_server", "", "delValue", "Request Function", "", h.Channel)
-	go Logger("DEBUG", ACTOR, "sample_server", "", "delValue", "key="+key, "", h.Channel)
-	client := createConnection()
+func (opt *operation) delValue(key string) (bool, error) {
+	go Logger("INFO", ACTOR, "sample_server", "", "delValue", "Request Function", "", opt.Channel)
+	go Logger("DEBUG", ACTOR, "sample_server", "", "delValue", "key="+key, "", opt.Channel)
+	client := opt.createConnection()
 	err := client.Del(key).Err()
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
 		message := "[" + file + "][" + strconv.Itoa(line) + "] : Error to Del Value on Redis " + err.Error()
-		go Logger("FATAL", ACTOR, "sample_server", "", "delValue", message, "", h.Channel)
+		go Logger("FATAL", ACTOR, "sample_server", "", "delValue", message, "", opt.Channel)
 
 		return false, err
 	}
-	go Logger("INFO", ACTOR, "sample_server", "", "delValue", "Success", "", h.Channel)
+	go Logger("INFO", ACTOR, "sample_server", "", "delValue", "Success", "", opt.Channel)
 	return true, nil
 }

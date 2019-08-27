@@ -10,36 +10,36 @@ import (
 	"strconv"
 )
 
-func (h *CustomerHandler) createSession(body string, profile Profile) (string, string) {
-	go Logger("INFO", ACTOR, "sample_server", "", "createSession", "Request Function", "", h.Channel)
+func (opt *operation) createSession(body string, profile Profile) (string, string) {
+	go Logger("INFO", ACTOR, "sample_server", "", "createSession", "Request Function", "", opt.Channel)
 	bytestring := sha256.Sum256([]byte(body))
 	sid := hex.EncodeToString(bytestring[:])
 	fmt.Println("SHA256 String is ", sid)
-	go Logger("DEBUG", ACTOR, "sample_server", "", "createSession", "hash="+sid, "", h.Channel)
+	go Logger("DEBUG", ACTOR, "sample_server", "", "createSession", "hash="+sid, "", opt.Channel)
 	var jsonData []byte
 	jsonData, err := json.Marshal(profile)
 	if err != nil {
 		// err.Error() conv to string
 		_, file, line, _ := runtime.Caller(1)
 		message := "[" + file + "][" + strconv.Itoa(line) + "] : Marshal " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "", "createSession", message, "", h.Channel)
+		go Logger("ERROR", ACTOR, "sample_server", "", "createSession", message, "", opt.Channel)
 	}
 
-	if status, err := h.setValue(sid, string(jsonData)); status != true || err != "" {
+	if status, err := opt.setValue(sid, string(jsonData)); status != true || err != "" {
 		// err.Error() conv to string
 		_, file, line, _ := runtime.Caller(1)
 		message := "[" + file + "][" + strconv.Itoa(line) + "] : Set Value to Redis Fail " + err
-		go Logger("ERROR", ACTOR, "sample_server", "", "createSession", message, "", h.Channel)
+		go Logger("ERROR", ACTOR, "sample_server", "", "createSession", message, "", opt.Channel)
 		return "", message
 	}
 
-	go Logger("INFO", ACTOR, "sample_server", "", "createSession", "Success", "", h.Channel)
+	go Logger("INFO", ACTOR, "sample_server", "", "createSession", "Success", "", opt.Channel)
 	return sid, ""
 }
 
-func (h *CustomerHandler) deleteSession(username string, sid string) error {
+func (opt *operation) deleteSession(username string, sid string) error {
 	profile := Profile{}
-	valueAsByte, err := h.getValue(sid)
+	valueAsByte, err := opt.getValue(sid)
 	if err != nil {
 		return err
 	}
@@ -48,11 +48,11 @@ func (h *CustomerHandler) deleteSession(username string, sid string) error {
 		// err.Error() conv to string
 		_, file, line, _ := runtime.Caller(1)
 		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "deleteSession", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "deleteSession", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
 		return err
 	}
 	if profile.Username == username {
-		if status, err := h.delValue(sid); status != true || err != nil {
+		if status, err := opt.delValue(sid); status != true || err != nil {
 			return err
 		}
 	}

@@ -13,19 +13,18 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	gorillaSessions "github.com/gorilla/sessions"
 )
-
-var gorillastore = gorillaSessions.NewCookieStore([]byte("SESSION_KEY"))
 
 var UUID_LOGS string
 var ACTOR string
+
 var best = Profile{
 	Username:    "best",
 	Address:     "1234",
 	Email:       "best@email.com",
 	CompanyName: "ice_company",
 	TxId:        "001",
+	Role:        "admin",
 }
 var gear = Profile{
 	Username:    "gear",
@@ -35,38 +34,16 @@ var gear = Profile{
 	TxId:        "001",
 }
 
+var SERVER_PORT = "3000"
+var SERVER_HOST = "0.0.0.0"
+
+type operation struct {
+	Channel chan string
+}
+
 func main() {
-
-	// UUID_LOGS, err := exec.Command("uuidgen").Output()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// fmt.Printf("ACTOR : %s\n", ACTOR)
-	// fmt.Printf("UUID_LOGS : %s\n", UUID_LOGS)
-
 	app := setupRouter()
-
-	// router.GET("/show", func(c *gin.Context) {
-	// 	gorillasession, err := gorillastore.Get(c.Request, "sessionid")
-	// 	if err != nil {
-	// 		c.JSON(http.StatusUnauthorized, gin.H{
-	// 			"error": http.StatusText(http.StatusUnauthorized),
-	// 		})
-	// 		return
-	// 	}
-	// 	fmt.Println(gorillasession.Values["username"])
-	// 	if username, _ := gorillasession.Values["username"]; username == "username" {
-	// 		c.JSON(http.StatusUnauthorized, gin.H{
-	// 			"error": http.StatusText(http.StatusUnauthorized),
-	// 		})
-	// 		return
-	// 	}
-	// 	c.JSON(http.StatusOK, gin.H{
-	// 		"message": gorillasession.Values["username"],
-	// 	})
-
-	// })
-	app.Run(":3000")
+	app.Run(SERVER_HOST + ":" + SERVER_PORT)
 }
 
 /*
@@ -93,21 +70,21 @@ func (rc *MyReadCloser) Close() error {
 	return rc.rc.Close()
 }
 
-func (h *CustomerHandler) LoggerPayload() gin.HandlerFunc {
+func (opt *operation) LoggerPayload() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method == http.MethodPost {
 			var buf bytes.Buffer
 			newBody := &MyReadCloser{c.Request.Body, &buf}
 			c.Request.Body = newBody
 			c.Next()
-			go Logger("DEBUG", ACTOR, "sample_server", "POST", "LoggerPayload", "payload="+buf.String(), "", h.Channel)
+			go Logger("DEBUG", ACTOR, "sample_server", "POST", "LoggerPayload", "payload="+buf.String(), "", opt.Channel)
 
 		} else if c.Request.Method == http.MethodPut {
 			var buf bytes.Buffer
 			newBody := &MyReadCloser{c.Request.Body, &buf}
 			c.Request.Body = newBody
 			c.Next()
-			go Logger("DEBUG", ACTOR, "sample_server", "PUT", "LoggerPayload", "payload="+buf.String(), "", h.Channel)
+			go Logger("DEBUG", ACTOR, "sample_server", "PUT", "LoggerPayload", "payload="+buf.String(), "", opt.Channel)
 
 		} else {
 			c.Next()
@@ -115,8 +92,8 @@ func (h *CustomerHandler) LoggerPayload() gin.HandlerFunc {
 	}
 }
 
-func (h *CustomerHandler) InitializeChannel() {
-	h.Channel = make(chan string)
+func (opt *operation) InitializeChannel() {
+	opt.Channel = make(chan string)
 	return
 }
 
@@ -151,24 +128,20 @@ func setupRouter() *gin.Engine {
 	//   - Logs all requests, like a combined access and error log.
 	//   - Logs to stdout.
 
-	//mysql
-	system := CustomerHandler{}
-	// system.InitializeMYSQL()
+	//
+	opt := operation{}
+	opt.InitializeChannel()
 
-	system.InitializeChannel()
-
-	app.Use(system.LoggerPayload())
-
-	// result := make(chan string)
+	app.Use(opt.LoggerPayload())
 
 	log.SetFlags(log.Lshortfile)
-	go Logger("INFO", ACTOR, "sample_server", "", "setupRouter", "Start API Server localhost:8080", "", system.Channel)
+	go Logger("INFO", ACTOR, "sample_server", "", "setupRouter", "Start API Server "+SERVER_HOST+":"+SERVER_PORT, "", opt.Channel)
 
 	//app router
-	app.GET("/", system.FirstPage)
-	app.POST("/login", system.Login)
-	app.POST("/getAllCars", system.GetAllCars)
-	app.POST("/addCar", system.AddCar)
+	app.GET("/", opt.FirstPage)
+	app.POST("/login", opt.Login)
+	app.POST("/getAllCars", opt.GetAllCars)
+	app.POST("/addCar", opt.AddCar)
 
 	// app.Use(logger.Setgo Logger() )
 
@@ -177,340 +150,13 @@ func setupRouter() *gin.Engine {
 
 /*
 	########################################################################################################
-	######################################### ROUTER&CONTROLLER ############################################
+	#################################################### MODEL #############################################
 	########################################################################################################
 */
-
-func (h *CustomerHandler) FirstPage(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"message": "My Session Test",
-	})
-}
-
-func (h *CustomerHandler) Login(c *gin.Context) {
-	go Logger("INFO", "", "sample_server", "POST", "Login", "Request Function", "", h.Channel)
-	go Logger("DEBUG", "", "sample_server", "POST", "Login", "path="+c.Request.RequestURI, "", h.Channel)
-
-	user := Login{}
-	// fmt.Println(user.Username)
-	if err := c.ShouldBindJSON(&user); err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", "", "sample_server", "POST", "Login", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": message,
-		})
-		return
-	}
-	UUID_LOGSAsBytes, err := exec.Command("uuidgen").Output()
-	if err != nil {
-		log.Fatal(err)
-	}
-	UUID_LOGS = string(UUID_LOGSAsBytes)
-	// fmt.Printf("ACTOR : %s\n", ACTOR)
-	ACTOR = user.Username
-	go Logger("INFO", ACTOR, "sample_server", "POST", "Login", "ACTOR : "+ACTOR+"UUID_LOGS : "+UUID_LOGS, "", h.Channel)
-	// fmt.Printf("UUID_LOGS : %s\n", UUID_LOGS)
-
-	var profile Profile
-	if user.Username == "best" {
-		profile = best
-	} else if user.Username == "gear" {
-		profile = gear
-	}
-	now := time.Now()
-	sec := now.Unix()
-	body := profile.Username
-	sid, errmessage := h.createSession(body+string(sec), profile)
-	if errmessage != "" {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + errmessage
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "Login", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": message,
-		})
-		return
-	}
-	// hardcode
-	// proflie := Profile{
-	// 	Username:    "gear",
-	// 	Address:     "empiretower",
-	// 	Email:       "gear@email.com",
-	// 	CompanyName: "ice_company",
-	// 	TxId:        "001",
-	// }
-
-	go Logger("INFO", ACTOR, "sample_server", "POST", "Login", "Request Success:", strconv.Itoa(http.StatusOK), h.Channel)
-
-	c.JSON(http.StatusOK, gin.H{
-		"profile":   profile,
-		"sessionid": sid,
-	})
-	return
-}
-
-func (h *CustomerHandler) Logout(c *gin.Context) {
-	go Logger("INFO", ACTOR, "sample_server", "POST", "Logout", "Request Function", "", h.Channel)
-	go Logger("DEBUG", ACTOR, "sample_server", "POST", "Logout", "path="+c.Request.RequestURI, "", h.Channel)
-
-	user := Profile{}
-	// fmt.Println(user.Username)
-	if err := c.ShouldBindJSON(&user); err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", "", "sample_server", "POST", "Logout", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": message,
-		})
-		return
-	}
-	valueAsByte, err := h.getValue(user.SId)
-	if err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : Unauthorized " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "Logout", message, strconv.Itoa(http.StatusUnauthorized), h.Channel)
-
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": message,
-		})
-		return
-	}
-	err = json.Unmarshal(valueAsByte, &user)
-	if err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "Logout", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": message,
-		})
-		return
-	}
-
-	err = h.deleteSession(user.Username, user.SId)
-	if err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "Logout", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": message,
-		})
-	}
-
-	go Logger("INFO", ACTOR, "sample_server", "POST", "Logout", "Request Success:", strconv.Itoa(http.StatusOK), h.Channel)
-	c.JSON(http.StatusOK, gin.H{
-		"sessionid": nil,
-	})
-	return
-}
-
-func (h *CustomerHandler) GetAllCars(c *gin.Context) {
-	go Logger("INFO", ACTOR, "sample_server", "POST", "GetAllCars", "Request Function", "", h.Channel)
-	go Logger("DEBUG", ACTOR, "sample_server", "POST", "GetAllCars", "path="+c.Request.RequestURI, "", h.Channel)
-	profile := Profile{}
-	if err := c.ShouldBindJSON(&profile); err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-		c.JSON(http.StatusBadRequest, gin.H{
-			// "status": http.StatusBadRequest,
-			"error": message,
-		})
-		return
-	}
-
-	valueAsByte, err := h.getValue(profile.SId)
-	if err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : Unauthorized " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusUnauthorized), h.Channel)
-
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": message,
-		})
-		return
-	}
-	err = json.Unmarshal(valueAsByte, &profile)
-	if err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": message,
-		})
-		return
-	}
-
-	var request RequestAllCars
-	request.Profile = profile
-	requestAsByte, _ := json.Marshal(request)
-	// response, err := http.Post("http://3.16.217.238:8080/api/v1/queryAll", "application/json", bytes.NewBuffer(requestBody))
-	req, err := http.NewRequest("POST", "http://3.16.217.238:8080/api/v1/queryAll", bytes.NewBuffer(requestAsByte))
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	res, err := client.Do(req)
-	var response Response
-	err = json.NewDecoder(res.Body).Decode(&response)
-	if err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": message,
-		})
-		return
-	}
-
-	if err != nil || res.StatusCode != 201 {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : ServiceUnavailable " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": message,
-		})
-		return
-	}
-	go Logger("INFO", ACTOR, "sample_server", "POST", "GetAllCars", "Request Success:", strconv.Itoa(http.StatusOK), h.Channel)
-
-	c.JSON(http.StatusOK, gin.H{
-		"cars": response,
-	})
-	return
-
-}
-
-func (h *CustomerHandler) AddCar(c *gin.Context) {
-	go Logger("INFO", ACTOR, "sample_server", "POST", "AddCar", "Request Function", "", h.Channel)
-	go Logger("DEBUG", ACTOR, "sample_server", "POST", "AddCar", "path="+c.Request.RequestURI, "", h.Channel)
-
-	// var buf bytes.Buffer
-	// newBody := &MyReadCloser{c.Request.Body, &buf}
-	// c.Request.Body = newBody
-	// fmt.Println(c.Request.Body)
-
-	car := Car{}
-	if err := c.ShouldBindJSON(&car); err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", "", "sample_server", "POST", "AddCar", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": message,
-		})
-		return
-	}
-
-	user := Profile{}
-	// fmt.Println(user.Username)
-	if err := c.ShouldBindJSON(&user); err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest000 " + err.Error()
-		go Logger("ERROR", "", "sample_server", "POST", "AddCar", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-		c.JSON(http.StatusBadRequest, gin.H{fer
-			// newBody := &MyReadCloser{c.Request.Body, &buf}
-			// c.Request.Body = newBody
-			// fmt.Println(c.Request.Body)
-			"error": message,
-		})
-		return
-	}
-
-	valueAsByte, err := h.getValue(user.SId)
-	if err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : Unauthorized " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "AddCar", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": message,
-		})
-		return
-	}
-	err = json.Unmarshal(valueAsByte, &user)
-	if err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "AddCar", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": message,
-		})
-		return
-	}
-
-	var request RequestAddCar
-	request.Profile = user
-	request.Make = car.Make
-	request.Model = car.Model
-	request.Colour = car.Colour
-	request.Owner = car.Owner
-	requestAsByte, _ := json.Marshal(request)
-	req, err := http.NewRequest("POST", "http://3.16.217.238:8080/api/v1/addCar", bytes.NewBuffer(requestAsByte))
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	res, err := client.Do(req)
-	var response ResponseAddCar
-	err = json.NewDecoder(res.Body).Decode(&response)
-	if err != nil {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "AddCar", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": message,
-		})
-		return
-	}
-
-	if err != nil || res.StatusCode != 201 {
-		// err.Error() conv to string
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : ServiceUnavailable " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
-
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": message,
-		})
-		return
-	}
-
-	go Logger("INFO", ACTOR, "sample_server", "POST", "AddCar", "Request Success:", strconv.Itoa(http.StatusOK), h.Channel)
-	c.JSON(http.StatusOK, gin.H{
-		"message": "success",
-	})
-}
-
-type CustomerHandler struct {
-	Channel chan string
-}
 
 type Response struct {
 	Code    int64  `json: "code"`
 	Message []Cars `json: "message"`
-}
-
-type ResponseAddCar struct {
-	Code    int64  `json: "code"`
-	Message string `json: "message"`
 }
 
 type Cars struct {
@@ -542,6 +188,11 @@ type RequestAddCar struct {
 	Owner   string  `json: "owner"`
 }
 
+type ResponseAddCar struct {
+	Code    int64  `json: "code"`
+	Message string `json: "message"`
+}
+
 type Profile struct {
 	Username    string `json: "username"`
 	Address     string `json: "address"`
@@ -549,6 +200,7 @@ type Profile struct {
 	CompanyName string `json: "companyName"`
 	SId         string `json: "sid"`
 	TxId        string `json: "txid"`
+	Role        string `json: "role"`
 }
 
 type Sid struct {
@@ -558,4 +210,341 @@ type Sid struct {
 type Message struct {
 	Message   string `json: "message"`
 	SessionId string `json: "ssid"`
+}
+
+/*
+	########################################################################################################
+	######################################### ROUTER&CONTROLLER ############################################
+	########################################################################################################
+*/
+/*
+	USER
+*/
+func (opt *operation) FirstPage(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "My Session Test",
+	})
+}
+
+func (opt *operation) Login(c *gin.Context) {
+	go Logger("INFO", "", "sample_server", "POST", "Login", "Request Function", "", opt.Channel)
+	go Logger("DEBUG", "", "sample_server", "POST", "Login", "path="+c.Request.RequestURI, "", opt.Channel)
+
+	//decode payload request
+	user := Login{}
+	if err := c.ShouldBindJSON(&user); err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", "", "sample_server", "POST", "Login", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	//generate uuid is index for logs store
+	UUID_LOGSAsBytes, err := exec.Command("uuidgen").Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	UUID_LOGS = string(UUID_LOGSAsBytes)
+
+	ACTOR = user.Username
+	go Logger("INFO", ACTOR, "sample_server", "POST", "Login", "ACTOR : "+ACTOR+"UUID_LOGS : "+UUID_LOGS, "", opt.Channel)
+
+	var profile Profile
+	if user.Username == "best" {
+		profile = best
+	} else if user.Username == "gear" {
+		profile = gear
+	}
+	now := time.Now()
+	sec := now.Unix()
+	body := profile.Username
+	sid, errmessage := opt.createSession(body+string(sec), profile)
+	if errmessage != "" {
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + errmessage
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "Login", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	// get value from sid key
+	valueAsByte, err := opt.getValue(sid)
+	err = json.Unmarshal(valueAsByte, &profile)
+	if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	// hardcode
+	// proflie := Profile{
+	// 	Username:    "gear",
+	// 	Address:     "empiretower",
+	// 	Email:       "gear@email.com",
+	// 	CompanyName: "ice_company",
+	// 	TxId:        "001",
+	// }
+
+	go Logger("INFO", ACTOR, "sample_server", "POST", "Login", "Request Success:", strconv.Itoa(http.StatusOK), opt.Channel)
+
+	c.JSON(http.StatusOK, gin.H{
+		"profile":   profile,
+		"sessionid": sid,
+	})
+	return
+}
+
+func (opt *operation) Logout(c *gin.Context) {
+	go Logger("INFO", ACTOR, "sample_server", "POST", "Logout", "Request Function", "", opt.Channel)
+	go Logger("DEBUG", ACTOR, "sample_server", "POST", "Logout", "path="+c.Request.RequestURI, "", opt.Channel)
+
+	user := Profile{}
+	// fmt.Println(user.Username)
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", "", "sample_server", "POST", "Logout", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+	valueAsByte, err := opt.getValue(user.SId)
+	if err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : Unauthorized " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "Logout", message, strconv.Itoa(http.StatusUnauthorized), opt.Channel)
+
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": message,
+		})
+		return
+	}
+	err = json.Unmarshal(valueAsByte, &user)
+	if err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "Logout", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	err = opt.deleteSession(user.Username, user.SId)
+	if err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "Logout", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+	}
+
+	go Logger("INFO", ACTOR, "sample_server", "POST", "Logout", "Request Success:", strconv.Itoa(http.StatusOK), opt.Channel)
+	c.JSON(http.StatusOK, gin.H{
+		"sessionid": nil,
+	})
+	return
+}
+
+func (opt *operation) GetAllCars(c *gin.Context) {
+	go Logger("INFO", ACTOR, "sample_server", "POST", "GetAllCars", "Request Function", "", opt.Channel)
+	go Logger("DEBUG", ACTOR, "sample_server", "POST", "GetAllCars", "path="+c.Request.RequestURI, "", opt.Channel)
+	profile := Profile{}
+
+	//decode payload request
+	if err := c.ShouldBindJSON(&profile); err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	valueAsByte, err := opt.getValue(profile.SId)
+	if err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : Unauthorized " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusUnauthorized), opt.Channel)
+
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": message,
+		})
+		return
+	}
+	err = json.Unmarshal(valueAsByte, &profile)
+	if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	var request RequestAllCars
+	request.Profile = profile
+	requestAsByte, _ := json.Marshal(request)
+	url := "http://3.16.217.238:8080/api/v1/queryAll"
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestAsByte))
+	go Logger("DEBUG", ACTOR, "sample_server", "POST", "GetAllCars", `http.NewRequest url:`+url, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	res, err := client.Do(req)
+	var response Response
+	err = json.NewDecoder(res.Body).Decode(&response)
+	if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	if err != nil || res.StatusCode != 201 {
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : ServiceUnavailable " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": message,
+		})
+		return
+	}
+	go Logger("INFO", ACTOR, "sample_server", "POST", "GetAllCars", "Request Success:", strconv.Itoa(http.StatusOK), opt.Channel)
+
+	c.JSON(http.StatusOK, gin.H{
+		"cars": response,
+	})
+	return
+
+}
+
+func (opt *operation) AddCar(c *gin.Context) {
+	go Logger("INFO", ACTOR, "sample_server", "POST", "AddCar", "Request Function", "", opt.Channel)
+	go Logger("DEBUG", ACTOR, "sample_server", "POST", "AddCar", "path="+c.Request.RequestURI, "", opt.Channel)
+
+	// var buf bytes.Buffer
+	// newBody := &MyReadCloser{c.Request.Body, &buf}
+	// c.Request.Body = newBody
+	// fmt.Println(c.Request.Body)
+
+	car := Car{}
+	if err := c.ShouldBindJSON(&car); err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", "", "sample_server", "POST", "AddCar", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	user := Profile{}
+	// fmt.Println(user.Username)
+	if err := c.ShouldBindJSON(&user); err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest000 " + err.Error()
+		go Logger("ERROR", "", "sample_server", "POST", "AddCar", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	valueAsByte, err := opt.getValue(user.SId)
+	if err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : Unauthorized " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "AddCar", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": message,
+		})
+		return
+	}
+	err = json.Unmarshal(valueAsByte, &user)
+	if err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "AddCar", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	var request RequestAddCar
+	request.Profile = user
+	request.Make = car.Make
+	request.Model = car.Model
+	request.Colour = car.Colour
+	request.Owner = car.Owner
+	requestAsByte, _ := json.Marshal(request)
+	req, err := http.NewRequest("POST", "http://3.16.217.238:8080/api/v1/addCar", bytes.NewBuffer(requestAsByte))
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	res, err := client.Do(req)
+	var response ResponseAddCar
+	err = json.NewDecoder(res.Body).Decode(&response)
+	if err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "AddCar", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	if err != nil || res.StatusCode != 201 {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : ServiceUnavailable " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": message,
+		})
+		return
+	}
+
+	go Logger("INFO", ACTOR, "sample_server", "POST", "AddCar", "Request Success:", strconv.Itoa(http.StatusOK), opt.Channel)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "success",
+	})
 }

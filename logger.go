@@ -49,34 +49,23 @@ func Logger(level string, actor string, component string, requestMethod string, 
 	}
 
 	switch level {
-
 	case "INFO":
 		loggerAsJson.Level = "INFO"
-
 	case "DEBUG":
 		loggerAsJson.Level = "DEBUG"
-		// fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s "uuid":%s`+"\n",
-		// 	loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
 	case "ERROR":
 		loggerAsJson.Level = "ERROR"
-		// fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s "uuid":%s`+"\n",
-		// 	loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
 	case "WANNING":
 		loggerAsJson.Level = "WANNING"
-		// fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s "uuid":%s`+"\n",
-		// 	loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
 	case "FATAL":
 		loggerAsJson.Level = "FATAL"
-		// fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s  %s "uuid":%s`+"\n",
-		// 	loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
-
 	}
 
 	fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s %s "uuid":"%s"`,
 		loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
 	LoggerDriving(loggerAsJson)
-
-	channel <- level + " OK"
+	fmt.Printf("\n")
+	channel <- level + "OK"
 
 }
 
@@ -97,10 +86,7 @@ func LoggerDriving(payload LoggerModel) {
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
-	// resp, err := client.Do(req)
-	// if err != nil {
-	//     panic(err)
-	// }
+
 	res, err := client.Do(req)
 
 	if err != nil {
