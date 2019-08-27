@@ -72,7 +72,7 @@ func Logger(level string, actor string, component string, requestMethod string, 
 
 	}
 
-	fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s %s "uuid":"%s"`+"\n",
+	fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s %s "uuid":"%s"`,
 		loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
 	LoggerDriving(loggerAsJson)
 

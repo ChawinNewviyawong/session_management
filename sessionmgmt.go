@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"runtime"
 	"strconv"
 )
@@ -36,17 +37,25 @@ func (h *CustomerHandler) createSession(body string, profile Profile) (string, s
 	return sid, ""
 }
 
-// func deleteSession(username string, sid string) error {
-// 	valueAsByte, err := getValue(sid)
-// 	if err != nil {
-// 		return err
-// 	}
+func (h *CustomerHandler) deleteSession(username string, sid string) error {
+	profile := Profile{}
+	valueAsByte, err := h.getValue(sid)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(valueAsByte, &profile)
+	if err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "deleteSession", message, strconv.Itoa(http.StatusBadRequest), h.Channel)
+		return err
+	}
+	if profile.Username == username {
+		if status, err := h.delValue(sid); status != true || err != nil {
+			return err
+		}
+	}
 
-// 	// if valueAsByte == username {
-// 	// 	if status, err := delValue(sid); status != true || err != nil {
-// 	// 		return err
-// 	// 	}
-// 	// }
-
-// 	return nil
-// }
+	return nil
+}
