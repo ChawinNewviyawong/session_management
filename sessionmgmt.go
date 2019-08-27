@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"runtime"
 	"strconv"
 )
@@ -34,4 +35,27 @@ func (opt *operation) createSession(body string, profile Profile) (string, strin
 
 	go Logger("INFO", ACTOR, "sample_server", "", "createSession", "Success", "", opt.Channel)
 	return sid, ""
+}
+
+func (opt *operation) deleteSession(username string, sid string) error {
+	profile := Profile{}
+	valueAsByte, err := opt.getValue(sid)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(valueAsByte, &profile)
+	if err != nil {
+		// err.Error() conv to string
+		_, file, line, _ := runtime.Caller(1)
+		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
+		go Logger("ERROR", ACTOR, "sample_server", "POST", "deleteSession", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
+		return err
+	}
+	if profile.Username == username {
+		if status, err := opt.delValue(sid); status != true || err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
