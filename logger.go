@@ -63,14 +63,14 @@ func Logger(level string, actor string, component string, requestMethod string, 
 
 	fmt.Printf(`%s %s |%s| "actor":"%s" "component":"%s" "function":"%s" %s %s "uuid":"%s"`,
 		loggerAsJson.Level, loggerAsJson.Timestamp, message, loggerAsJson.Actor, component, functionName, requestMethod, codeStatus, UUID_LOGS)
-	LoggerDriving(loggerAsJson)
 	fmt.Printf("\n")
+	// LoggerDriving(loggerAsJson)
 	channel <- level + "OK"
 
 }
 
 func LoggerDriving(payload LoggerModel) {
-	url := "http://ce60d431.ngrok.io/api/insertLogs"
+	url := "http://ac5dc220.ngrok.io/api/insertLogs"
 	// fmt.Println("URL:>", url)
 	// fmt.Println("payload:>", payload)
 
