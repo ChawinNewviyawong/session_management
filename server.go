@@ -140,8 +140,9 @@ func setupRouter() *gin.Engine {
 	//app router
 	app.GET("/", opt.FirstPage)
 	app.POST("/login", opt.Login)
-	app.POST("/getAllCars", opt.GetAllCars2)
+	app.POST("/getAllCars", opt.GetAllCars)
 	app.POST("/addCar", opt.AddCar)
+	app.POST("/logout", opt.Logout)
 
 	// app.Use(logger.Setgo Logger() )
 
@@ -448,17 +449,17 @@ func (opt *operation) GetAllCars2(c *gin.Context) {
 	}
 
 	// quire Permission from Database
-	res, err := opt.quirePermission(function)
+	permission, err := opt.quirePermission(function)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
-	var permission string
-	json.NewDecoder(res).Decode(&permission)
+	var permissionAsString string
+	json.NewDecoder(permission).Decode(&permissionAsString)
 
-	checkedPermission := opt.checkedPermission(permission, session.Profile.Role)
+	checkedPermission := opt.checkedPermission(permissionAsString, session.Profile.Role)
 	fmt.Println(checkedPermission)
 	if !checkedPermission {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -469,31 +470,19 @@ func (opt *operation) GetAllCars2(c *gin.Context) {
 
 	var request RequestAllCars
 	request.Profile = session.Profile
-	requestAsByte, _ := json.Marshal(request)
-	url := "http://3.16.217.238:8080/api/v1/queryAll"
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestAsByte))
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	res, err := client.Do(req)
+
+	// Query all cars from Database
+	res, err := opt.queryAllCar(request)
+
 	var response Response
-	err = json.NewDecoder(res.Body).Decode(&response)
+	err = json.NewDecoder(res).Decode(&response)
 	if err != nil {
-		_, file, line, _ := runtime.Caller(1)
-		message := "[" + file + "][" + strconv.Itoa(line) + "] : BadRequest " + err.Error()
-		go Logger("ERROR", ACTOR, "sample_server", "POST", "GetAllCars", message, strconv.Itoa(http.StatusBadRequest), opt.Channel)
-
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": message,
-		})
-		return
-	}
-
-	if err != nil || res.StatusCode != 201 {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"cars": response,
 	})
