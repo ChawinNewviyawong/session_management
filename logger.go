@@ -70,7 +70,7 @@ func Logger(level string, actor string, component string, requestMethod string, 
 }
 
 func LoggerDriving(payload LoggerModel) {
-	url := "http://ac5dc220.ngrok.io/api/insertLogs"
+	url := "http://209.97.167.162:9000/api/insertLogs"
 	// fmt.Println("URL:>", url)
 	// fmt.Println("payload:>", payload)
 

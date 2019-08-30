@@ -32,5 +32,5 @@ Example for run time
 [GIN-debug] POST   /login                    --> main.(*operation).Login-fm (5 handlers)
 [GIN-debug] POST   /getAllCars               --> main.(*operation).GetAllCars-fm (5 handlers)
 [GIN-debug] Listening and serving HTTP on 0.0.0.0:3000
-INFO 2019-08-27T16:41:56+07:00 |Start API Server 0.0.0.0:3000| "actor":"" "component":"sample_server" "function":"setupRouter"   "uuid":""
+INFO 2019-08-27T16:41:56+07:00 |Start API Server 0.0.0.0:3000| "actor":"" "component":"GO_API_SERVER" "function":"setupRouter"   "uuid":""
 ```
